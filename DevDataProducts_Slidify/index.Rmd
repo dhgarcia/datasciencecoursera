@@ -1,0 +1,92 @@
+---
+title: "Developemnt Data Products Course Project"
+author: "DHGarcia"
+highlighter: highlight.js
+output: pdf_document
+job: Johns Hopkins Specialization in Data Science
+knit: slidify::knit2slides
+mode: selfcontained
+hitheme: tomorrow
+subtitle: MPG Regression Models
+framework: io2012
+widgets: []
+---
+
+## MPG Regression Models
+
+###    Introduction
+
+    Simple App for the Developemnt Data Products Course Project.
+
+    The Goal is to explore the relationship between miles per gallon (MPG)
+    and a set of variables in the `mtcars` data set provide in R.
+
+--- .class #id 
+
+## MPG Regression Models
+
+###   DataSet
+
+    `mtcars` dataset is use to build our model predicton. 
+    We load the mtcars data and take a look at the variables.
+    And convert some variables into factors.
+    
+```{r factor, cache = FALSE}
+
+mtcars$cyl = factor(mtcars$cyl)
+mtcars$vs = factor(mtcars$vs)
+mtcars$am = factor(mtcars$am)
+mtcars$gear = factor(mtcars$gear)
+mtcars$carb = factor(mtcars$carb)
+levels(mtcars$am) = c("AT", "MT")
+str(mtcars)
+
+
+```
+
+--- .class #id 
+
+
+## Model Selection
+
+The user can select different set of variables to create the regreesion model.
+
+```{r select,echo =FALSE, cache = FALSE}
+
+selectInput("variable", "Variable:",
+                        c("Transmission" = "am",
+                          "Transmission and Cylinders" = "am + cyl",
+                          "Transmission and Cylinders and Displacement" = "am + cyl + disp",
+                          "Transmission and Cylinders and Displacement and Horsepower" = "am + cyl + disp + hp",                          
+                          "Transmission and Cylinders and Displacement and Horsepower and Weight" = "am + cyl + disp+ hp + wt")
+                        )
+
+
+```
+
+The model will be of the form.
+
+```{r model1, cache = FALSE}
+
+model1 <- lm(mpg ~ am, mtcars)
+
+```
+
+
+--- .class #id 
+
+
+## Output
+
+The main panel will show the residual plot and the summary of the compute model.
+
+```{r figure3, cache = FALSE}
+
+par(mfrow = c(2, 2))
+plot(model1)
+
+
+```
+
+
+

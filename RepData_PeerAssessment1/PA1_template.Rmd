@@ -1,0 +1,131 @@
+---
+output:
+  pdf_document: default
+  html_document:
+    keep_md: yes
+---
+# Reproducible Research: Peer Assessment 1
+
+```{r setglobaloptions, echo=FALSE}
+library(knitr)
+opts_chunk$set(echo = TRUE, fig.path = 'figures/' )
+library(ggplot2)
+pal<-colorRampPalette(c("skyblue1", "magenta4"))
+plotColors <- pal(5)
+```
+
+## Loading and preprocessing the data
+
+```{r loaddata}
+FILE = "activity.zip"
+CSV_FILE = unzip(FILE, list=TRUE)$Name[1]
+if (!file.exists(CSV_FILE)) unzip(ZIP_FILE, files=CSV_FILE)
+
+ori_data <- read.csv(CSV_FILE, colClasses=c("numeric","Date","numeric"))
+ori_data$date <- as.Date(ori_data$date)
+data <- ori_data[!is.na(ori_data$steps),]
+summary(data)
+```
+
+
+
+## What is mean total number of steps taken per day?
+
+Per day steps
+```{r per_day}
+pday <- aggregate(list("steps" = data$steps), by=list("date" = data$date), FUN=sum)
+Mean <- mean(pday$steps)
+Median <- median(pday$steps)
+
+with(pday, {
+    ggplot(pday, aes(x=steps)) +   
+      geom_histogram(fill=plotColors[1]) + 
+      geom_vline(xintercept=Mean, col=plotColors[5]) +
+      annotate("text", label = paste("mean:", round(Mean)),
+    x = 0, y = 7, hjust = 0, vjust = 1, col=plotColors[5]) +
+      geom_vline(xintercept=Median, col=plotColors[3]) +
+      annotate("text", label = paste("median:", Median),
+      x = 0, y = 6, hjust = 0, vjust = 1, col=plotColors[3])
+})
+```
+
+The mean steps taken per day is `r Mean` with median `r Median`.
+
+## What is the average daily activity pattern?
+
+```{r day_activity}
+pinterval <- aggregate(list("steps" = data$steps), by=list("interval" = data$interval), FUN=mean)
+max <- pinterval[pinterval$steps==max(pinterval$steps),]
+
+with(pinterval, {
+    ggplot(data = pinterval, aes(x=interval, y=steps)) +         
+        geom_polygon(fill=plotColors[4]) +
+        xlab("time of day") + ylab("mean steps") +
+        annotate("text", label = paste("max:", round(max$steps), 'at', max$interval),
+        x =max$interval, y = max$steps, hjust = 0, vjust = 1, col=plotColors[2])
+})
+
+```
+
+maximum number of steps (`r round(max$steps)`) at `r max$interval`.
+
+## Imputing missing values
+
+Total # of missing values in the orginal dataset `r sum(is.na(ori_data$steps))`.
+
+
+Strategy: Substitute missing values with the average value for that time interval across all days.
+
+```{r missingvalues}
+withDaily <- merge(ori_data, pinterval, by="interval", sort=FALSE, 
+suffixes=c(".all",".dailymean"), all.x=TRUE)
+
+mval_data <- withDaily[with(withDaily, order(date, interval)),
+c("date","interval","steps.all","steps.dailymean")]
+
+mval_data$steps <- ifelse(is.na(mval_data$steps.all), mval_data$steps.dailymean, mval_data$steps.all)
+
+mval_pday <- aggregate(list("steps" = mval_data$steps), by=list("date" = mval_data$date), FUN=sum)
+mval_Mean <- mean(mval_pday$steps)
+mval_Median <- median(mval_pday$steps)
+
+with(mval_pday, {
+    ggplot(mval_pday, aes(x=steps)) +   
+      geom_histogram(fill=plotColors[1]) + 
+      geom_vline(xintercept=mval_Mean, col=plotColors[5]) +
+      annotate("text", label = paste("mean:", round(mval_Mean)),
+               x = 0, y = 7, hjust = 0, vjust = 1, col=plotColors[5]) +
+      geom_vline(xintercept=mval_Median, col=plotColors[3]) +
+      annotate("text", label = paste("median:", round(mval_Median)),
+               x = 0, y = 6, hjust = 0, vjust = 1, col=plotColors[3])
+})
+```
+
+The new dataset mean steps taken per day is `r mval_Mean` with median `r mval_Median`. The original dataset mean steps taken per day was `r Mean` with median `r Median`.
+There is no significant impact to the daily average
+
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+```{r weekdays}
+
+weekdayFactor <- function(d) {
+    wd <- (as.POSIXlt(d))$wday
+    ifelse(wd==0|wd==6, "weekend", "weekday")
+}
+
+
+mval_data$weekday <- weekdayFactor(mval_data$date)
+mval_pinterval <- aggregate(list("steps" = mval_data$steps),
+by=list("interval"=mval_data$interval,"weekday"=mval_data$weekday), FUN=mean)
+
+with(mval_pinterval, {
+    ggplot(mval_pinterval, aes(x=interval, y=steps)) +
+        facet_grid(weekday ~ .) +
+        geom_polygon(fill=plotColors[2]) +
+        xlab("time of day") + 
+        ylab("mean steps")        
+})
+```
+
+* The subject becomes active at a latter time during the weekends, also there is a spike in steps between 8~9 in the weekdays not present in the weekends. However the weekends show slightly more activity during the afternoons (12~21).
